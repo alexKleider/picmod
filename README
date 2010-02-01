@@ -1,0 +1,30 @@
+A gpl'ed script called picmod.py which serves to resize (I've only a need for 
+shrinkage) and rotate jpeg image files.
+
+This is now (as of Jan 31, 2010) a functioning rewrite of a previous 
+project I initially called picproc.py for picture processor written in Python.
+The current name is for picture modifier in Python.
+
+Since it is now working, I'll give this a version number:  v0.1
+This number reflects the fact that I'm sure there are still a lot of bugs
+and the fact that there's more I want to add.
+
+The rewrite was done to eliminate the need for globals by using an instance of 
+a class; (an idea suggested by Dan Silverstein who runs an informal weekly
+Python tutorial at NoiseBridge in San Francisco)
+what used to be globals have become attributes of that instance.
+These attributes are populated in a way that reflects the options chosen by
+the user on the command line. There are also other attributes that are 
+set and used by the processing machine.
+
+Still not implemented but something I very much want to add is the optional
+creation of an html file containing links to the generated image files. 
+Apart from the obvious worth of being able to look at the photos using a 
+browser, this would have the added benefit of doing much of the work if one
+wanted to use these photos in a web page: the link syntax would already
+be there.
+
+Enjoy!
+
+Alex Kleider alex@kleider.ca
+Sun Jan 31 16:31:15 PST 2010
