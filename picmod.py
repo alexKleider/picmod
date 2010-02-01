@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 # picmod.py
-# Thu Jan 28 21:58:14 PST 2010
+# Sun Jan 31 18:02:47 PST 2010
 
 copyright_text = \
 """
