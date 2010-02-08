@@ -1,0 +1,21 @@
+p {
+    color:blue;
+}
+
+body { background:teal; color:navy; text-align:left; margin:0; padding:0;}
+
+#container {
+	width:965px;
+	margin:10px auto;
+	padding:7px;
+	background:silver;
+	}
+
+a:link, a:visited {
+color:#003366;
+}
+
+a:hover {
+color:#ff00ff;
+}
+
