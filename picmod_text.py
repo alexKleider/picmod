@@ -103,7 +103,7 @@ is here to make it easier.</p>
 <li> <a href="./next_page.html">Next page</a></li>
 <li> <a href="./previous_page.html">Previous page</a></li>
 <li> Link back to: <a href="../sub_index.html">contents</a></li>
-<li> Link back to: <a href='../index.html">main page</a></li>
+<li> Link back to: <a href="../index.html">main page</a></li>
 </ul>
 -->
 </body>

@@ -1,9 +1,36 @@
-A gpl'ed script called picmod.py which serves to resize (I've only a need for 
-shrinkage) and rotate jpeg image files.
+file: README
+
+Fri Aug 27 07:56:41 PDT 2010
+
+Much has been changed.
+
+The long winded textual components (copyright, intro, WebPage, usage and 
+the man page) have been moved into a separate module (picmod_text.py) 
+and are imported.
+
+An html page is now generated with 'refs' to the modified photos.
+
+Time stamps of the originals are used to sort the 'refs'.
+This was motivated by having had a trip captured by several cameras and 
+wanting the photos to be sorted by when they were taken rather than those
+taken by one camera followed by another and so on.
+
+I've never had occassion to use the pre or post fix renaming and will 
+probably remove this functionality. Currently, all modified photos are placed
+in a separate directory anyway so there's no point. If the pre &/or post fix
+feature is important to anyone, I'd like to know about it. Then what I might
+do is allow for the modified photos to be kept in the same directory as the 
+original.
+
+######################
+First README entry follows:
+
+A gpl'ed script called 'picmod.py' which serves to resize (I've only a need 
+for shrinkage) and rotate jpeg image files.
 
 This is now (as of Jan 31, 2010) a functioning rewrite of a previous 
-project I initially called picproc.py for picture processor written in Python.
-The current name is for picture modifier in Python.
+project I initially called 'picproc.py' for "picture processor" written in 
+Python.  The current name is for "picture modifier" in Python.
 
 Since it is now working, I'll give this a version number:  v0.1
 This number reflects the fact that I'm sure there are still a lot of bugs

@@ -1,251 +1,28 @@
 #!/usr/bin/env python
-# picmod.py v0.2
-# Tue Feb  2 12:17:12 PST 2010
+# picmod.py v0.3  
+#    New image files keep same time stamp as originals
+#    Listing of image files in HTML file is chronologic
+#    and there are date headers included.
+# Mon Aug  2 18:25:19 PDT 2010
 
-copyright_text = \
-"""
-    "picmod" stands for "picture modifier": 
-        it provides for shrinkage and rotation of jpeg image files.
+from picmod_text import copyright_text, intro_text, WebPage, usage, man
 
-    Copyright (C) 2010  Alexander Kleider 
-
-    This program is free software: you can redistribute it and/or modify
-    it under the terms of the GNU General Public License as published by
-    the Free Software Foundation, either version 3 of the License, or
-    (at your option) any later version.
-
-    This program is distributed in the hope that it will be useful,
-    but WITHOUT ANY WARRANTY; without even the implied warranty of
-    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-    GNU General Public License for more details.
-
-    You should have received a copy of the GNU General Public License
-    along with this program.  (Look for a file called COPYING.)
-    If not, see <http://www.gnu.org/licenses/>.
-"""
-
-intro_text = \
-"""
-    picmod  Copyright (C) 2010 Alexander Kleider
-    This program comes with ABSOLUTELY NO WARRANTY; 
-    This is free software, and you are welcome to redistribute it
-    under certain conditions;
-    for details rerun the program as follows: picmod.py --conditions
-
-If you are not sure what to do, use CTL-C to quit this program, and then
-try picmod --usage or picmod --man (picmod --man | pager will be better:-)
-
-Contact: Alex Kleider, P.O. Box 277, Bolinas, CA 94924 USA    alex@kleider.ca
-"""
-
-import sys, os, getopt, datetime
+import sys, os, getopt, datetime, time
 from PIL import Image   
 from PIL.ExifTags import TAGS
 
 
-def usage():
-    print """ picmod usage statement
-    picmod.py options arguments:
-"?uhvqicm:r:p:P:d:l:", 
-['conditions', 'usage', 'help', 'man', 'verbose', 'quiet', 
-'interactive', 'change', 'htmlCreate', 'htmlFileName', 
-'max=', 'rotation=', 'prefix=', 'Prefix=', 'directory=', 'logfile='] 
-file_name_arguments
-"""
-
-def man():
-    print """ picmod man page
-    NAME  picmod.py  -  Photo processing utility.
-
-    SYNOPSIS
-        picmod.py [-?uhvqic] [-m max_dimension] [-r rotation] [-p prefix ] \
-        [-P postfix] [-d directory] [-l logfile] files.. directories..
-
-    SUGGESTED USAGE
-        if you have a high end camera that provides EXIF Orientation data:
-            picmod.py -qc[m 500] --htmlCreate
-        if not and if you have some portrait shots in your collection:
-            picmod.py -qi[m 500] --htmlCreate
-        The optional -m 500 (the [] should NOT be included either way) 
-        parameter can be set to what ever number you want or left out if
-        you like my default which is a little under 500 pixels in the 
-        pictures maximum dimension.
-
-    OPTIONS
-        -?, -h, -u :  print a usage statement.
-        -v : verbose- provides extra output during program execution.
-            default is True
-        -i : interactive- provides data, shows images, and accepts user input.
-            default is True
-        -q : quiet- sets both verbose and interactive to false;
-            If you want verbose or interactive but not the other,
-            use -q followed by -v or -i, which ever you want
-        -c : change- with out this option, noting is processed.
-        -m max : processed image will be shrunk to fit into a max pixels
-            square without distortion. I've set a default that best fits 
-            my web page. -m 500 will reset it to 500 pixels (a tiny bit too 
-            big for my purposes.)
-        -r rotation : 0, n, a, -, l, co, +, r, cl
-            0, n(o rotation
-            a(uto is the default: this assumes EXIF data is available.
-                defaults to no rotation if data is not available.
-            -, l(eft, co(nter clockwise.
-            +, r(ight, cl(lockwise
-            If your camera does not provide EXIF "Orientation" data you'd be
-            well advised to use interactive mode: -i
-        -p prefix :  designates a prefix for output file, default is ''
-            There's really no need to use this or the next option unless
-            you want to go out of your way to put the new files in the same
-            directory as the originals.
-        -P postfix : designates a postfix, default is ''
-        -d directory :  an out put directory name may be specified.
-            A time stamped default will be generated so don't worry.
-        -l logfile :  a log file may be specified.
-               This has not yet been implemented and I've no immediate plan
-               to do so since there is a default file you can consult in 
-               /tmp/picmod.log
-        Long options are also available. 
-        Those that have corresponding short options will be obvious:  
-        --usage, --help, --man, --verbose, --quiet, --interactive, --change,
-        --max, --rotation, --prefix, --Prefix, --directory, --logfile
-        Other long options:
-        --htmlCreate :  if set, an html file will be created with refs to the 
-            output files so the images can be examined with a browser and 
-            the text of the html used in web design.
-        --htmlFileName :  the user may specify a name for this file but is
-            advised not to do so since the default name will be time stamped
-            and hence guaranteed to remain unique.
-        --conditions : this one simply prints copyright information and exits.
-
-    ARGUMENTS
-        Arguments can be image files or directories containing image files.
-
-    NOTES:
-        The basic functionality of this program is to downsize image files.
-    It is also possible to rotate images. (See below.)
-    
-    Image files are assumed to end in one of the strings defined in the
-    'Image_Suffix_Tuple' constant currently set as: 
-    ('.jpg', '.JPG', 'tiff', 'TIFF', '.png', '.PNG')
-    Other files are simply ignored after they are reported in the log.
-    A none image file with such a sufix will probably be ignored (although
-    this has yet to be tested.)
-
-        An output directory will be created and any user specified name will
-    be respected to the extent possible. The default behavior is to create a 
-    directory name by appending '_pm.d' to a time stamp and place this 
-    directory under the current working directory. If this proves impossible
-    (?permissions?), arguments will be traversed and the first suitable 
-    directory will be chosen. If the argument is a directory itself, it will
-    be picked as a parent for the output directory; if it is a file, an 
-    attempt will be made to use its directory as a parent. If all fails, 
-    possibly due to restrictive permissions preventing directory creation, 
-    the program will abort.
-         There exists protection against the very real possibility
-    that there may be files having the same name but in different directory 
-    arguments. A 0 padded three digit number is inserted before the .jpg 
-    or .JPG) suffix to make each name unique. This may break down now that 
-    four character suffixes have been allowed. (Remember, this is a work in 
-    progress:-)
-        Without the -c or --change option, no image processing will be done
-    but the -i or --interactive option, provides an opportunity for a 'dry 
-    run.' If neither of these is in effect, the program will abort. 
-        The -v or -verbose option is what you'd expect.
-    The -p or --prefix and -P or --postfix options are probably best left set 
-    to their null string defaults. If you want to explicitly set one (or both)
-    DO NOT use quotes unless it's to specify the null string; if you do, the 
-    quotes will be part of the string! Since the null string is the default
-    anyway, it should never be necessary to use quotes.
-        It is possible to specify that images be rotated. L(eft (counter 
-    clock wise) or r(ight (clock wise) are self explanatory. The a(uto option
-    causes the program to make a decision based on EXIF data if available; 
-    if EXIF data is not available, there will be no rotation. Interactive 
-    mode gives the user the option to over ride rotation before processing 
-    begins. It also allows the user to abort processing of the image currently 
-    under displayed. 
-        EXIF data is only available with images taken by high end cameras. 
-    When it is available, most display programs will read this data and 
-    display the photo in the correct orientation even though it is really not 
-    that way in the file, so keep this in mind. When in doubt, use interactive 
-    mode: the photo will be presented without any such correction.
-        A log file may be specified using the -l or --logfile option. 
-    Regardless of any such specification, log entries are appended to a file 
-    Default_Temp_Log_Path which is created if it doesn't already exist. The 
-    plan is to copy the relevant data for a particular run to the file 
-    specified for that run (not yet implemented.) After the program is run a 
-    few times, Default_Temp_Log_Path may get large and the data you might be 
-    looking for will be at the end of it. Data from each run of the program 
-    appears beneath a timestamp header line. Default_Temp_Log_Path is currently
-    set to and will probably remain as '/tmp/picmod.log'. If this file gets
-    very large, you can always edit it or simply delete it. Be aware that your
-    system may intermittently delete files in /tmp so don't rely on this data
-    being permanent.
-
-    """
-
-WebPage = \
-""" <!-- a web page created by picmod 
-Copyright 2010 Alexander Kleider (alex@kleider.ca)
-    This file is part of ripple.  (...or has been generated by it.)
-
-    Ripple is free software: you can redistribute it and/or modify
-    it under the terms of the GNU General Public License as published by
-    the Free Software Foundation, either version 3 of the License, or
-    (at your option) any later version. Go to http://github.com and there,
-    do a search for "picmod."
-
-    Ripple is distributed in the hope that it will be useful, but WITHOUT 
-    ANY WARRANTY; without even the implied warranty of MERCHANTABILITY 
-    or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public 
-    License for more details. If you did not receive a copy of the license 
-    along with ripple, see <http://www.gnu.org/licenses/>.
-
-# This file is written in such a way that a string with its contents can be 
-# used as a format string to be followed by the format operator (a percent
-# sign,) and a 4-tuple of strings specifying the path name of a .css file, 
-# a time stamp, the directory housing the photos, and a multi line  string 
-# containing the HTML "<img src=..." references, one per line, for each of 
-# photos.
-
--->
-<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN"
-"http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
-
-<html>
-<head>
-<title> picmod Web page </title>
-<link rel="stylesheet" type="text/css" href="%s">
-</head>
-
-<div id="container">
-<body>
-<h1> picmod Photos </h1>
-<p> These photos were generated by the picmod program by its %s time stamped
-run. Look in %s for the photos themselves. This is provided for you to serve
-as a template for a web page you may want to make out of the photos.</p>
-<p> Clearly you will want to edit it to suit your own purposes. The frame work
-is here to make it easier.</p>
-%s
-<!--
-<h3> OTHER LINKS </h3>
-<ul>
-<li> <a href="./day_10.html">Previous day</a>
-<li> Link back to: <a href="../tripindex.html">trip contents</a>
-<li> <a href="./day_12.html">Next day</a>
-</ul>
--->
-</body>
-</div>
-</html>
-"""
-
 def handle_fatal_parsing_error(error):
+    """ Announces a parsing error, prints <error>, and terminates."""
     print """!!!!! Error parsing options: probably syntax error. !!!!!
-Suggest: picmod -u for usage or picmod -m for man page.
+Suggest: "picmod -u" for usage or "picmod -m | man" for man page.
 Problem may be to do with: %s."""% error
     sys.exit(2)  
 
 def log_message_to(message, logfilepath):
+    """Appends message to file called <logfilepath>.
+    
+    Terminates program if an error is raised."""
     try:
         log=open(logfilepath, 'a')
         log.write(message)
@@ -255,96 +32,106 @@ def log_message_to(message, logfilepath):
         sys.exit(2)
         
 def new_dir (parent, dir):
+    """ Creates a new directory, dir, in the parent file system.
+    
+    Returns full path name if successful, None if not successful."""
     path = os.path.join(parent,dir)
     cmd = 'mkdir '+path
-    try:
-        os.system(cmd)
-    except:
-        return None
-    if os.path.isdir(path):
-        return path
+    try: os.system(cmd)
+    except: return None
+    if os.path.isdir(path): return path
+    else: return None
 
 def dir_is_writeable(dir):
+    """ Answers if it is possible to write a file to dir."""
     path=os.path.join(dir, Test_File_Name)
-    try:
-        test_fi=open(path, 'w')
-    except:
-        return False
-    else:
-        test_fi.close()
-        os.system('rm '+path)
-        return True
-                       
+    try: test_fi=open(path, 'w')
+    except: return False
+    test_fi.close()
+    os.system('rm '+path)
+    return True
+#                        
 def interp_rotation(text_input):
-    """ inputs lrLRaA or cl, co allow for option interpretation
-        inputs 0168 allow for EXIF data interpretation
-        returns one of the following signed integers: 
-        0 :  no rotation
-        -90 :  rotate clockwise or to the right
-        90 :  rotate counter-clockwise or to the left
-        360 :  try to rely on EXIF data, else no rotation
-        -hence meets the invarient that rotation must be one of these.
+    """ Returns one of the following signed integers: 
+              0 :  no rotation
+            -90 :  rotate clockwise or to the right
+             90 :  rotate counter-clockwise or to the left
+            360 :  try to rely on EXIF data, else no rotation
+        Hence meets the invarient that rotation must be one of the above.
+        Inputs (lrLRaA or cl, co): allow for option interpretation.
+        Inputs (0168): allow for EXIF data interpretation.
     """
     if text_input:
-        if text_input[0] in ('01'):
-            return 0
-        elif text_input[0] in ('-lL8'):
-            return 90
-        elif text_input[0] in ('+rR6'):
-            return -90
-        elif text_input[0] in ('aA'):
-            return 360
+        if text_input[0] in ('01'): return 0
+        elif text_input[0] in ('-lL8'): return 90
+        elif text_input[0] in ('+rR6'): return -90
+        elif text_input[0] in ('aA'): return 360
         elif len(text_input) > 1:
-            if text_input[:2] in ('cl', 'Cl', 'CL'):
-                return -90
-            if text_input[:2] in ('co', 'Co', 'CO'):
-                return 90
-        else:
-            return 0
-    else:
-        return 360
+            if text_input[:2] in ('cl', 'Cl', 'CL'): return -90
+            if text_input[:2] in ('co', 'Co', 'CO'): return 90
+        else: return 0   # if given invalid string
+    else: return 360     # if given empty string
 
 def interp_pre_post_fix(text_input):
+    """ Allows user to specify an empty string.
+    
+    This should never be necessary since the empty string is the default."""
     if text_input in ('""', "''"):
         return ''
     else:
         return text_input
+    # the following seems to be 'dead code.' ?should be deleted?
     handle_fatal_parsing_error('designation of pre or post fix')
 
 def is_image_file(filepath):
+    """This needs some study as to what exactly I was thinking."""
     if not filepath[-Image_Suffix_Length:] in Image_Suffix_Tuple:
         return False
     l = len(Default_Prefix)
+    # I think the above line should use globals.prefix vs Default_Prefix.
     if l == 0:
         return True
     return filepath[:len(Default_Prefix)] != Default_Prefix
 
-def time():
+def ret_time_stamp():
+    """Provides a time stamp for log file entries."""
     return str(datetime.datetime.now())
 
 Timestamp_Truncation_Level=14  # to the level of seconds
 def timestamp():      # Trunkated to seconds.
+    """ Intended for creation of time stamped file names.
+    Not implemented because I found such file names to be cumbersome."""
     t=datetime.datetime.now()
     ret = str.translate(str(t),None,' :.-')[:Timestamp_Truncation_Level]
     return ret
         
-def no_dups(fname, t, len=3, place=-4):
-    """ Assumes fname is a (?file?) name which is to be placed into t, a list.
+# 
+def no_dups(fname, t, length=3, place=''):
+    """ Returns fname or a modification of it; appends result to the list, t.
+
+    Assumes fname is a name which is to be placed into t, a list.
     This is to be done in such a way that no duplicates can occur in the list.
     If fname does not already exist in t, it is appended.
     If fname already exists in t, it will be modified and then appended.
-    Modification consists of inserting a len character long, zero padded
+    Modification consists of inserting a length character long, zero padded
     number (beginning with 1 and incremented as needed) beginning at 
-    fname[place].
-    For example: photo.jpg might become photo001.jpg.
+    fname[place]. If place is the empty string it will be converted 
+    to the integer len(fname). An attempt will be made to convert any 
+    other value given for place into an integer that can be used as a
+    slice operand.
+    For example: if place = -4, photo.jpg might become photo001.jpg.
     The inserted file name is returned, whether it be the original 
     or a modification.
     This function works even if len(fname) is less than places. It even works
     if fname is an empty string!
     """
+    if not place:
+        place = len(fname)
+    else:
+        place = int(place)
     n =0
     name=fname
-    s='%0'+str(len)+'d'
+    s='%0'+str(length)+'d'
     while name in t:
         n=n+1
         insert = s%n
@@ -352,13 +139,15 @@ def no_dups(fname, t, len=3, place=-4):
     t.append(name)
     return name
 
-TimeStamp = 'ts' # timestamp()
+TimeStamp = 'ts' # 'ts' is used instead of timestamp()
 
-#  Default values:
+# Some of the following are used to define the next group of defaults:
 Default_Dir_Suffix='_pm.d'
 Default_html_Suffix='_pm.html' # web page will display the photos
-Path2cssFile='../web.css'       # css file used by the html page
-Default_html_File=TimeStamp+Default_html_Suffix
+Path2cssFile='../web.css'  # css file not provided) used by the html page
+Test_File_Name='picmod.junk'
+Temp_Log_Path='/tmp/picmod.log'
+#  Default values used to instantiate globals:
 Default_Verbose=True
 Default_Interactive=True
 Default_Process=False
@@ -368,14 +157,13 @@ Default_Prefix=''
 Default_Postfix=''
 Default_Output_Directory=TimeStamp+Default_Dir_Suffix
 Default_Create_html_File=False
-Default_Temp_Log_Path='/tmp/picmod.log'
+Default_html_File=TimeStamp+Default_html_Suffix
 Default_Log_File_Name=''
-Default_File_Args=[]
-Test_File_Name='picmod.junk'
 
 Image_Suffix_Tuple = ('.jpg', '.JPG', 'tiff', 'TIFF', '.png', '.PNG')
 Image_Suffix_Length = 4
 
+# 
 class Specs(object):
     
     """contains the globals to specify how the photos are to be processed"""
@@ -389,7 +177,7 @@ class Specs(object):
             create_html_file=Default_Create_html_File, \
             html_file= Default_html_File, \
             logfile=Default_Log_File_Name, \
-            file_args=Default_File_Args        ):
+            file_args=[]        ):
 
         self.verbose = verbose
         self.interactive=interactive
@@ -403,9 +191,8 @@ class Specs(object):
         self.html_file=Default_html_File
         self.logfile=logfile
         self.file_args=file_args
-        self.temp_logfile=Default_Temp_Log_Path  # no user influence
-        # the above attribute is only used by 'handle_arg'
-        self.image_files=[]          # empty list, no user influence
+        self.temp_logfile=Temp_Log_Path  # no user influence
+        self.image_files=[]  # a collector, no user influence
         self.out_files=[]   # used to check for duplicate names
 
 
@@ -442,7 +229,11 @@ image_files = %(image_files)s\n\
                 print
 
     def handle_arg(self, file):
-        """ Handles each argument; recursively when appropriate. """
+        """ Handles each argument; recursively when appropriate. 
+        
+        Arguments that are image files are appended to 
+        self.image_files  (a list of the images to be processed)   """
+
         self.v("Handling %s"%file, 0)
         if os.path.exists(file):  # EXISTS?
             file=os.path.abspath(file)  # EXPANDED
@@ -470,28 +261,30 @@ image_files = %(image_files)s\n\
                 self.handle_arg(fi_path)
                 
         elif os.path.isfile(file):   # a FILE, finally:-)
-            if is_image_file(file):  # ck it's an IMAGE
+            if is_image_file(file):  # ck it's an IMAGE (file access)
                 self.v('%s --> list.'%file)
-                self.image_files.append(file)
+                self.image_files.append(file)  # append to list of image files
             else:                    # report not IMAGE
                 message='Ignoring non image file: %s\n' % file
                 self.v(message,0)
                 log_message_to(message, self.temp_logfile)
-
+        # end of def handle_arg(self, file):
+# 
     def complete_calculable_values(self):
         """ 
         1. sets up all the image files into self.image_files,
                                 a single list of full path names.
-        2. sets up Default_Temp_Log_Path and reports managed problems to it.
+        1.a/ it is here that one could order the image files.
+        2. sets up Temp_Log_Path and reports managed problems to it.
         3. sets up the output directory.
         4. (Yet to be implemented: )determines final location for logfile and 
                 moves current content of the temporary log file into it.   
         """
         # initialize self.temp_logfile for use by self.handle_arg()
-        log_message_to('\n#####'+time()+': new run of picmod.py.#####\n', \
+        log_message_to('\n#####'+ret_time_stamp()+': new run of picmod.py.#####\n', \
                                                         self.temp_logfile)
         
-        timestamp_odir = timestamp()+Default_Dir_Suffix
+        Timestamp_odir = ret_time_stamp()+Default_Dir_Suffix
 
         if self.odir:  # Is user assigned out put directory valid??
             if (os.path.isdir(self.odir) and dir_is_writeable(self.odir)):
@@ -508,7 +301,7 @@ image_files = %(image_files)s\n\
                     log_message_to(message, self.temp_logfile)
                     self.odir=''     # Waste it! We'll look for another.
         if not self.odir:      # try TIME STAMP in CURRENT WORKING DIRECTORY
-            cwd=os.getcwd()
+            cwd=os.getcwd()  # 1st attempt to establish an output directory.
             possible_odir = new_dir(cwd, timestamp_odir)  
             if possible_odir and dir_is_writeable(possible_odir):     
                 self.odir=possible_odir
@@ -516,18 +309,9 @@ image_files = %(image_files)s\n\
         self.v('Begin traversal of arguments.')
         for file in self.file_args:
             fi=os.path.abspath(file)
-            self.handle_arg(fi)
-
-        if not self.odir:
-            self.v('Begin search for an out_put_directory.')
-            for path in self.image_files: 
-                if self.odir:
-                    break
-                dir, file = os.path.split(path)
-                possible_odir = new_dir(dir, timestamp_odir)
-                if possible_odir and dir_is_writeable(possible_odir):
-                    self.odir=possible_odir
-                    self.v('Found $s to be out_put_directory.'%dir) 
+            self.handle_arg(fi)  # Will continue attempts to find 
+            #                      an output directory (as needed.)
+        
         if not self.odir:
             message='FATAL ERROR: unable to establish an output directory!'
             self.v(message, 0)
@@ -537,7 +321,7 @@ image_files = %(image_files)s\n\
             message='Out put directory: '+ self.odir +'\n'
             self.v(message,0)
             log_message_to(message, self.temp_logfile)
-
+# 
     def manipulate(self):
         """ Traverse the list of image files and do the work. """
 
@@ -550,8 +334,7 @@ image_files = %(image_files)s\n\
             the repository) """
             a, b = two_ints
             longest = a
-            if b > a:
-                longest = b
+            if b > a: longest = b
             ratio = (float(max_dimension)/float(longest))
             return (int(a*ratio), int(b*ratio))
         
@@ -569,20 +352,15 @@ image_files = %(image_files)s\n\
                     decoded = TAGS.get(tag, tag)
                     exif_info[decoded] = value
                 return exif_info["Orientation"]
-            except:
-                return
+            except: return
 
         def rotation2text(n):
-            if n == 0:
-                return 'none'
-            elif n == 90:
-                return 'to left'
-            elif n == -90:
-                return 'to right'
-            elif n == 360:
-                return 'default or auto'
+            if n == 0: return 'none'
+            elif n == 90: return 'to left'
+            elif n == -90: return 'to right'
+            elif n == 360: return 'default or auto'
 
-        """ The beginning of the body of def process(self):"""
+        """ !!! The BEGINNING of the BODY of def manipulate(self):  !!!"""
 
         message= \
 """Beginning traversal of image files. If they are to be processed, 
@@ -591,15 +369,14 @@ their destination directory will appear below.\n"""
             message=message+"%s.\n"%self.odir
         self.v(message,0)
         log_message_to(message, self.temp_logfile)
-        html_img_lines = [] # used to collect data for the html file
+        html_img_data = [] # used to collect data for the html file
         for p in self.image_files:  # TRAVERSE
             save = self.process
             message= \
-'\n-----------------------------\nWILL TRY TO OPEN %s\n'%p
+'\n-----------------------------\nWILL TRY TO OPEN %s\n'  %   p
             self.v(message,0)
             log_message_to(message, self.temp_logfile)
-            try:
-                i=Image.open(p)
+            try: i=Image.open(p)
             except:
                 message='\tUnable to open as an image file.\n'
                 self.v(message,0)
@@ -660,14 +437,10 @@ new_size)
                     i.show()
                     response = raw_input(interactive_text)
                     if response:
-                        if response[0] in '0n':
-                            current_rotation=0
-                        elif response[0] in 'Ll':
-                            current_rotation=90
-                        elif response[0] in 'Rr':
-                            current_rotation=-90
-                        elif response[0] in 'Aa':
-                            save = False
+                        if response[0] in '0n': current_rotation=0
+                        elif response[0] in 'Ll': current_rotation=90
+                        elif response[0] in 'Rr': current_rotation=-90
+                        elif response[0] in 'Aa': save = False
                         else:
                             message=  \
 '\tUninterpretable response ("%s"); will use defaults.\n'%response
@@ -677,9 +450,10 @@ new_size)
                     self.v(verbose_text)
                     log_message_to(verbose_text, self.temp_logfile)
 
-                if save:
+                if save:  # FINALLY GET TO PROCESS AN IMAGE FILE- p / i
+
                     file=self.prefix+os.path.basename(p)+self.postfix
-                    out_file=no_dups(file, self.out_files)
+                    out_file=no_dups(file, self.out_files, place=-4)
                     out_path=os.path.join(self.odir, out_file)
                     message=  \
                         'Rotation: %d; Size: %s; to be SAVED AS\n%s.\n' \
@@ -690,21 +464,57 @@ new_size)
                     if current_rotation!=0:
                         i = i.rotate(current_rotation)
                         new_size = i.size
-                    i.save(out_path)
+                    i.save(out_path); 
+                    # Also want to preserve mtime of original photo
+                    # Collect mtime and establish time related vars:
+                    epoch_mtime = os.path.getmtime(p)
+                    struct_mtime = time.localtime(epoch_mtime)
+                    date_time_dic = {'y':struct_mtime.tm_year,
+                                'm':struct_mtime.tm_mon,
+                                'md':struct_mtime.tm_mday,
+                                'hour':struct_mtime.tm_hour,
+                                'min':struct_mtime.tm_min }
+                    date_taken =  "%(y)04d/%(m)02d/%(md)02d"\
+                                                      %  date_time_dic
+                    date_time_taken4human =  \
+                            "%(y)04d/%(m)02d/%(md)02d %(hour)02d:%(min)02d"\
+                                                      %  date_time_dic
+                    date_time_taken4touch =  \
+                            "%(y)04d%(m)02d%(md)02d%(hour)02d%(min)02d"\
+                                                      %  date_time_dic
+
+                    cmd = 'touch -t %s %s'  % (date_time_taken4touch, out_path)
+                    os.system(cmd)
+                    
                     new_html_img_line = \
-'<img src="%s" width="%d" height="%d" alt="%s" /img>\n' % \
-(out_path, new_size[0], new_size[1], TimeStamp+' image')
-                    html_img_lines.append(new_html_img_line)
+        '<img src="%s" width="%d" height="%d" alt="%s"/>\n' % \
+                        ("./"+out_file, \
+                        new_size[0], \
+                        new_size[1], \
+                        'image taken '+ date_time_taken4human)
+
+                    if self.verbose:
+                      print \
+                      '#: adding new_html_img_line presented on next line:'
+                      print new_html_img_line
+                    html_img_data.append(    \
+                        (date_time_taken4touch, new_html_img_line, date_taken) )
                 else:
                     message= \
                     '\tChanges- Rotation:%d; Size: %s, not made or saved.\n'\
-                    % current_rotation, str(new_size)
+                    % (current_rotation, str(new_size))
                     self.v(message,0)
                     log_message_to(message,self.temp_logfile)
-        
+        #
+        html_img_data.sort()   # Sorts by time taken.
+        date_header=''
         html_txt=''
-        html_img_lines.sort()
-        for line in html_img_lines:
+        for date_time, line, date in html_img_data:
+            if not date_header or date_header !=  date:
+                date_header = date
+                date_header_line = \
+                "<h3> Photos taken %s: </h3>\n" % date
+                html_txt = html_txt + date_header_line
             html_txt = html_txt + line
         html = WebPage%(Path2cssFile, TimeStamp, self.odir, html_txt)
         htmlFile=os.path.join(self.odir, Default_html_File)
@@ -776,15 +586,15 @@ def set_options():
     return globals
 
 if __name__=='__main__':  
-                # suggested by leif@synthesize.us at NoiseBridge 1/27/2010
+            # suggested by leif@synthesize.us at NoiseBridge 1/27/2010
 
     globals=set_options()
 
-    print intro_text
-
-    print 'Globals as discovered from cmd ln options:'
-    print globals.__str__()
-    j=raw_input('<---! to continue')
+    if globals.verbose:
+        print intro_text
+        print 'Globals as discovered from command line options:'
+        print globals.__str__()
+        j=raw_input('<---! to continue')
 
     globals.complete_calculable_values()
 
