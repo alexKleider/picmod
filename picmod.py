@@ -157,7 +157,8 @@ Default_Prefix=''
 Default_Postfix=''
 Default_Output_Directory=TimeStamp+Default_Dir_Suffix
 Default_Create_html_File=False
-Default_html_File=TimeStamp+Default_html_Suffix
+# Default_html_File=TimeStamp+Default_html_Suffix
+Default_html_File = 'index.html'
 Default_Log_File_Name=''
 
 Image_Suffix_Tuple = ('.jpg', '.JPG', 'tiff', 'TIFF', '.png', '.PNG')
@@ -516,7 +517,7 @@ new_size)
                 "<h3> Photos taken %s: </h3>\n" % date
                 html_txt = html_txt + date_header_line
             html_txt = html_txt + line
-        html = WebPage%(Path2cssFile, TimeStamp, self.odir, html_txt)
+        html = WebPage%(Path2cssFile, html_txt)
         htmlFile=os.path.join(self.odir, Default_html_File)
         html_file=open(htmlFile, "w")
         html_file.write(html)
