@@ -163,7 +163,8 @@ Default_Log_File_Name=''
 
 Image_Suffix_Tuple = ('.jpg', '.JPG', 'tiff', 'TIFF', '.png', '.PNG')
 Image_Suffix_Length = 4
-
+timestamp_odir = 'NewDir'
+ 
 # 
 class Specs(object):
     
